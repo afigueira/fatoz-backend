@@ -1,0 +1,26 @@
+{
+  "name": "fatozbackend",
+  "version": "0.1.0",
+  "description": "",
+  "framework": "mvc",
+  "bodyParser": true,
+  "main": "app.js",
+  
+  "keywords": [
+  ],
+  "author": "",
+  "maintainers": [
+  ],
+  "contributors": [
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "preferGlobal": false,
+  "dependencies": {
+  "acs-node": ">=0.9.2"
+  },
+  "license":"",
+  "private": true
+}
