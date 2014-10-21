@@ -46,7 +46,6 @@ function verifyWaitingUsers(roomId) {
 	var usersLength = rooms[roomId].length;
 	
 	if (usersLength > 1) {
-		console.log('more than 1 user waiting');
 		var userA = rooms[roomId].shift();
 		var userB = rooms[roomId].shift();
 		
@@ -54,8 +53,6 @@ function verifyWaitingUsers(roomId) {
 		userB.socket.emit('creatingMatch', {fighterId: userA.userId});
 		
 		startMatch(userA, userB, roomId);
-	} else {
-		console.log('waiting other users...');
 	}
 }
 
@@ -217,8 +214,6 @@ function joinRoom(data, socket) {
 	
 	rooms[roomId].push(row);
 	
-	console.log(rooms);
-	
 	verifyWaitingUsers(roomId);
 }
 
@@ -228,8 +223,6 @@ function leaveRoom(data, socket) {
 	var roomId = data.roomId;
 	
 	removeUser(userId, roomId);
-	
-	console.log(rooms);
 }
 
 // #userReady
@@ -328,10 +321,8 @@ function questionAnswered(data, socket) {
 		}
 	});
 	
-	// TO-DO: avisar o adversário da resposta do outro
-	var figtherSideIndex = userSide == 'a' ? 1 : 0;
-	
-	currentMatches[matchId][figtherSideIndex].socket.emit('figtherAnswered', {questionIndex: questionIndex, time: time, isCorrect: isCorrect});
+	var fighterSideIndex = userSide == 'a' ? 1 : 0;
+	currentMatches[matchId][fighterSideIndex].socket.emit('fighterAnswered', {time: time, isCorrect: isCorrect});
 	
 	questionAnsweredReady(matchId, questionIndex, socket);
 }
