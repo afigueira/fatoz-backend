@@ -6,6 +6,9 @@ var categories = [];
 var rooms =[];
 var users = [];
 var matches = [];
+var questions = [];
+var questionsAnswered = [];
+var currentMatches = [];
 
 function init() {
 	initACS();
@@ -14,7 +17,6 @@ function init() {
 function initACS() {
 	sdk = ACS.initACS('dqOaDoAlKXrBGNnRRehHewwcc7qmH44J');
 	
-	// TO-DO create an administrator user
 	ACS.Users.login({
 		login: 'administrator',
 		password: '1123581321'
@@ -38,30 +40,6 @@ function getAllCategories() {
 			}
 		}
 	});
-}
-
-// public methods
-
-// #enterUser
-function enterUser(data, socket) {
-	console.log('enterUser!');
-}
-
-// #exitUser
-function exitUser(data, socket) {
-	console.log('exitUser!');
-}
-
-// #joinRoom
-function joinRoom(data, socket) {
-	var roomId = data.roomId;
-	var userId = data.userId;
-	
-	var row = {userId: userId, socket: socket};
-	
-	rooms[roomId].push(row);
-	
-	verifyWaitingUsers(roomId);
 }
 
 function verifyWaitingUsers(roomId) {
@@ -94,7 +72,6 @@ function startMatch(userA, userB, categoryId) {
 		var onCompleteCreateQuestions = function(questions) {
 			ACS.Objects.create({
 				classname: 'matches',
-				// TO-DO set userId
 				fields: {
 					user_a: userA.userId,
 					user_b: userB.userId,
@@ -103,12 +80,18 @@ function startMatch(userA, userB, categoryId) {
 					question_2: questions[1],
 					question_3: questions[2],
 					question_4: questions[3],
-					question_5: questions[4]
+					question_5: questions[4],
+					points_a: 0,
+					points_b: 0
 				}
 			}, function (response){
 				if (response.success) {
 					var match = response.matches[0];
 					var matchId = match.id;
+					
+					currentMatches[matchId] = [];
+					currentMatches[0] = userA;
+					currentMatches[1] = userB;
 					
 					userA.socket.emit('mountMatch', {categoryId: categoryId, matchId: matchId});
 					userB.socket.emit('mountMatch', {categoryId: categoryId, matchId: matchId});
@@ -147,9 +130,106 @@ function getQuestion(total, arrayIgnore, categoryId, callback) {
 	});	
 }
 
+function removeUser(userId, roomId) {
+	if (roomId) {
+		var room = rooms[roomId];
+		
+		for (var i in room) {
+			var row = room[i];
+			
+			if (row.userId == userId) {
+				room.splice(i, 1);
+				
+				return;
+			}
+		}
+	}
+}
+
+function updateMatchLog(matchLogId, userSide, questionIndex, time) {
+	
+	var fieldOption = 'question_' + questionIndex +  '_option_' + userSide;
+	var fieldTime = 'question_' + questionIndex + '_time_' + userSide;
+	
+	ACS.Objects.update({
+		classname: 'matches_log',
+		id: matchLogId,
+		fields: {
+			fieldOption: questionIndex,
+			fieldTime: time
+		}
+	});
+}
+
+function questionAnsweredReady(matchId, questionIndex, socket) {
+	
+	if (!questionsAnswered[matchId]) {
+		questionsAnswered[matchId] = [];
+	}
+	
+	if (!questionsAnswered[matchId][questionIndex]) {
+		questionsAnswered[matchId][questionIndex] = [];
+	}
+	
+	questionsAnswered[matchId][questionIndex].push(socket);
+	
+	if (questionsAnswered[matchId][questionIndex].length == 2) {
+		if (questionIndex == 5) {
+			questionsAnswered[matchId][questionIndex][0].emit('finishGame', {});
+			questionsAnswered[matchId][questionIndex][1].emit('finishGame', {});
+		} else {
+			questionsAnswered[matchId][questionIndex][0].emit('showQuestion', {questionIndex: questionIndex + 1});
+			questionsAnswered[matchId][questionIndex][1].emit('showQuestion', {questionIndex: questionIndex + 1});	
+		}
+				
+		var index = questionsAnswered[matchId].indexOf(questionIndex);
+		questionsAnswered[matchId].splice(index, 1);
+		
+		index = questionsAnswered.indexOf(matchId);
+		questionsAnswered.splice(index, 1);
+		
+		index = questions.indexOf(matchId);
+		questions.splice(index, 1);
+		
+		index = currentMatches.indexOf(matchId);
+		currentMatches.splice(index, 1);
+	}
+}
+
+// public methods
+
+// #enterUser
+function enterUser(data, socket) {
+	console.log('enterUser!');
+}
+
+// #exitUser
+function exitUser(data, socket) {
+	console.log('exitUser!');
+}
+
+// #joinRoom
+function joinRoom(data, socket) {
+	var roomId = data.roomId;
+	var userId = data.userId;
+	
+	var row = {userId: userId, socket: socket};
+	
+	rooms[roomId].push(row);
+	
+	console.log(rooms);
+	
+	verifyWaitingUsers(roomId);
+}
+
 // #leaveRoom
 function leaveRoom(data, socket) {
-	console.log('leaveRoom!');
+	var userId = data.userId;
+	var roomId = data.roomId;
+	
+	removeUser(userId, roomId);
+	
+	console.log(rooms);
 }
 
 // #userReady
@@ -163,17 +243,97 @@ function userReady(data, socket) {
 	matches[matchId].push(socket);
 	
 	if (matches[matchId].length == 2) {
-		matches[matchId][0].emit('showQuestion', {questionId: 1});
-		matches[matchId][1].emit('showQuestion', {questionId: 1});
+		matches[matchId][0].emit('showQuestion', {questionIndex: 1});
+		matches[matchId][1].emit('showQuestion', {questionIndex: 1});
 		
 		var index = matches.indexOf(matchId);
 		matches.splice(index, 1);
 	}
 }
 
+function questionReady(data, socket) {
+	var questionIndex = data.questionIndex;
+	var matchId = data.matchId;
+	
+	if (!questions[matchId]) {
+		questions[matchId] = [];
+	}
+	
+	if (!questions[matchId][questionIndex]) {
+		questions[matchId][questionIndex] = [];
+	}
+	
+	questions[matchId][questionIndex].push(socket);
+	
+	if (questions[matchId][questionIndex].length == 2) {
+		questions[matchId][questionIndex][0].emit('startQuestion', {questionIndex: questionIndex});
+		questions[matchId][questionIndex][1].emit('startQuestion', {questionIndex: questionIndex});
+		
+		var index = questions[matchId].indexOf(questionIndex);
+		questions[matchId].splice(index, 1);
+	}
+}
+
 // #questionAnswered
 function questionAnswered(data, socket) {
-	console.log('questionAnswered!');
+	var userSide = data.userSide;
+	var matchId = data.matchId;
+	var questionIndex = data.questionIndex;
+	var time = data.time;
+	var isCorrect = data.isCorrect;
+	
+	ACS.Objects.query({
+		classname: 'matches_log',
+		where: {
+			match_id: matchId
+		}
+	}, function(response) {
+		if (response.success) {
+			if (response.matches_log.length == 0) {
+				ACS.Objects.create({
+					classname: 'matches_log',
+					fields: {
+						match_id: matchId,
+						question_1_option_a: 0,
+						question_1_time_a: 0,
+						question_2_option_a: 0,
+						question_2_time_a: 0,
+						question_3_option_a: 0,
+						question_3_time_a: 0,
+						question_4_option_a: 0,
+						question_4_time_a: 0,
+						question_5_option_a: 0,
+						question_5_time_a: 0,
+						question_1_option_b: 0,
+						question_1_time_b: 0,
+						question_2_option_b: 0,
+						question_2_time_b: 0,
+						question_3_option_b: 0,
+						question_3_time_b: 0,
+						question_4_option_b: 0,
+						question_4_time_b: 0,
+						question_5_option_b: 0,
+						question_5_time_b: 0
+					}
+				}, function(response) {
+					if (response.success) {
+						var matchLogId = response.matches_log[0].id;
+						updateMatchLog(matchLogId, userSide, questionIndex, time);
+					}
+				});				
+			} else {
+				var matchLogId = response.matches_log[0].id;
+				updateMatchLog(matchLogId, userSide, questionIndex, time);
+			}
+		}
+	});
+	
+	// TO-DO: avisar o adversário da resposta do outro
+	var figtherSideIndex = userSide == 'a' ? 1 : 0;
+	
+	currentMatches[matchId][figtherSideIndex].socket.emit('figtherAnswered', {questionIndex: questionIndex, time: time, isCorrect: isCorrect});
+	
+	questionAnsweredReady(matchId, questionIndex, socket);
 }
 
 // init app
