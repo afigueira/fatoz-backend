@@ -87,8 +87,8 @@ function startMatch(userA, userB, categoryId) {
 					var matchId = match.id;
 					
 					currentMatches[matchId] = [];
-					currentMatches[0] = userA;
-					currentMatches[1] = userB;
+					currentMatches[matchId][0] = userA;
+					currentMatches[matchId][1] = userB;
 					
 					userA.socket.emit('mountMatch', {categoryId: categoryId, matchId: matchId});
 					userB.socket.emit('mountMatch', {categoryId: categoryId, matchId: matchId});
@@ -148,13 +148,14 @@ function updateMatchLog(matchLogId, userSide, questionIndex, time) {
 	var fieldOption = 'question_' + questionIndex +  '_option_' + userSide;
 	var fieldTime = 'question_' + questionIndex + '_time_' + userSide;
 	
+	var fields = {};
+	fields[fieldOption] = questionIndex;
+	fields[fieldTime] = time;
+	
 	ACS.Objects.update({
 		classname: 'matches_log',
 		id: matchLogId,
-		fields: {
-			fieldOption: questionIndex,
-			fieldTime: time
-		}
+		fields: fields
 	});
 }
 
@@ -184,12 +185,6 @@ function questionAnsweredReady(matchId, questionIndex, socket) {
 		
 		index = questionsAnswered.indexOf(matchId);
 		questionsAnswered.splice(index, 1);
-		
-		index = questions.indexOf(matchId);
-		questions.splice(index, 1);
-		
-		index = currentMatches.indexOf(matchId);
-		currentMatches.splice(index, 1);
 	}
 }
 
@@ -264,6 +259,9 @@ function questionReady(data, socket) {
 		
 		var index = questions[matchId].indexOf(questionIndex);
 		questions[matchId].splice(index, 1);
+		
+		index = questions.indexOf(matchId);
+		questions.splice(index, 1);
 	}
 }
 
@@ -274,6 +272,7 @@ function questionAnswered(data, socket) {
 	var questionIndex = data.questionIndex;
 	var time = data.time;
 	var isCorrect = data.isCorrect;
+	var option = data.option;
 	
 	ACS.Objects.query({
 		classname: 'matches_log',
@@ -322,7 +321,7 @@ function questionAnswered(data, socket) {
 	});
 	
 	var fighterSideIndex = userSide == 'a' ? 1 : 0;
-	currentMatches[matchId][fighterSideIndex].socket.emit('fighterAnswered', {time: time, isCorrect: isCorrect});
+	currentMatches[matchId][fighterSideIndex].socket.emit('fighterAnswered', {time: time, isCorrect: isCorrect, option: option});
 	
 	questionAnsweredReady(matchId, questionIndex, socket);
 }
