@@ -9,6 +9,7 @@ var matches = [];
 var questions = [];
 var questionsAnswered = [];
 var currentMatches = [];
+var currentQuestions = [];
 
 function init() {
 	initACS();
@@ -172,13 +173,8 @@ function questionAnsweredReady(matchId, questionIndex, socket) {
 	questionsAnswered[matchId][questionIndex].push(socket);
 	
 	if (questionsAnswered[matchId][questionIndex].length == 2) {
-		if (questionIndex == 5) {
-			questionsAnswered[matchId][questionIndex][0].emit('finishGame', {});
-			questionsAnswered[matchId][questionIndex][1].emit('finishGame', {});
-		} else {
-			questionsAnswered[matchId][questionIndex][0].emit('showQuestion', {questionIndex: questionIndex + 1});
-			questionsAnswered[matchId][questionIndex][1].emit('showQuestion', {questionIndex: questionIndex + 1});	
-		}
+		
+		emitNextQuestion(matchId, questionIndex, questionsAnswered);
 				
 		var index = questionsAnswered[matchId].indexOf(questionIndex);
 		questionsAnswered[matchId].splice(index, 1);
@@ -186,6 +182,16 @@ function questionAnsweredReady(matchId, questionIndex, socket) {
 		index = questionsAnswered.indexOf(matchId);
 		questionsAnswered.splice(index, 1);
 	}
+}
+
+function emitNextQuestion(matchId, questionIndex, container) {
+	if (questionIndex == 5) {
+			container[matchId][questionIndex][0].emit('finishGame', {});
+			container[matchId][questionIndex][1].emit('finishGame', {});
+		} else {
+			container[matchId][questionIndex][0].emit('showQuestion', {questionIndex: questionIndex + 1});
+			container[matchId][questionIndex][1].emit('showQuestion', {questionIndex: questionIndex + 1});	
+		}
 }
 
 // public methods
@@ -324,6 +330,34 @@ function questionAnswered(data, socket) {
 	currentMatches[matchId][fighterSideIndex].socket.emit('fighterAnswered', {time: time, isCorrect: isCorrect, option: option});
 	
 	questionAnsweredReady(matchId, questionIndex, socket);
+}
+
+// #timerEnd
+function timerEnd(data, socket) {
+	var matchId = data.matchId;
+	var questionIndex = data.questionIndex;
+	
+	if (!currentQuestions[matchId]) {
+		currentQuestions[matchId] = [];
+	}
+	
+	if (!currentQuestions[matchId][questionIndex]) {
+		currentQuestions[matchId][questionIndex] = [];
+	}
+	
+	currentQuestions[matchId][questionIndex].push(socket);
+	
+	// recebi timerEnd dos dois
+	if (currentQuestions[matchId][questionIndex].length == 2) {
+		emitNextQuestion(matchId, questionIndex, currentQuestions);
+		
+		var index = currentQuestions[matchId].indexOf(questionIndex);
+		currentQuestions[matchId].splice(index, 1);
+		
+		index = currentQuestions.indexOf(matchId);
+		currentQuestions.splice(index, 1);
+		
+	}
 }
 
 // init app

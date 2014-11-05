@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  	<meta name="viewport" content="width=device-width, height=device-height, user-scalable=no">
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+      google.load("visualization", "1", {packages:["corechart"]});
+      google.setOnLoadCallback(drawChart);
+      function drawChart() {
+
+        var data = google.visualization.arrayToDataTable([
+          ['Pontos', 'Pontos totais'],
+          ['Tecnologia', 372],
+          ['Esportes', 321],
+          ['Fatos e Notícias', 120],
+          ['Curiosidades', 123]
+        ]);
+
+        var options = {
+          title: '',
+          backgroundColor: '#efefef',
+          enableInteractivity: false,
+          pieSliceText: 'value',
+          fontName: 'Proxima Nova',
+          tooltip: {
+          	trigger: 'none'
+          }
+        };
+
+        var chart = new google.visualization.PieChart(document.getElementById('piechart'));
+
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+  <body topmargin="0" leftmargin="0" bgcolor="#efefef">
+    <div id="piechart" style="width: 100%; height: 100%"></div>
+  </body>
+</html>
