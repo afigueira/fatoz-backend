@@ -360,6 +360,72 @@ function timerEnd(data, socket) {
 	}
 }
 
+// #matchResult
+function matchResult(data, socket) {
+	var matchId = data.matchId;
+	var pointsA = data.pointsA;
+	var pointsB = data.pointsB;
+	var userPoints;
+	var userWinner;
+	
+	ACS.Objects.update({
+		classname: 'matches',
+		id: matchId,
+		fields: {
+			points_a: pointsA,
+			points_b: pointsB
+		}
+	});
+	
+	// se não houver ganhador, ninguém ganha achievements
+	if (pointsA != pointsB) {
+		userPoints = pointsA > pointsB ? pointsA : pointsB;
+		
+		ACS.Objects.query({
+			classname: 'matches',
+			where: {
+				id: matchId
+			}
+		}, function(response){
+			if (response.success) {
+				var match = response.matches[0];
+				var userId = pointsA > pointsB ? match.user_a : match.user_b;
+				var categoryId = match.category;
+				
+				ACS.Objects.query({
+					classname: 'achievements',
+					where: {
+						users_id: userId,
+						categories_id: categoryId
+					}
+				}, function(response) {
+					if (response.success && response.achievements.length > 0) {
+						var achievementId = response.achievements[0].id;
+						userPoints = response.achievements[0].points + userPoints;
+						
+						ACS.Objects.update({
+							classname: 'achievements',
+							id: achievementId,
+							fields: {
+								points: userPoints
+							}
+						});
+					} else {						
+						ACS.Objects.create({
+							classname: 'achievements',
+							fields: {
+								users_id: userId,
+								points: userPoints,
+								categories_id: categoryId
+							}
+						});
+					}
+				});
+			}
+		});	
+	}
+}
+
 // init app
 
 init();

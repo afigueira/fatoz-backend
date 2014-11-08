@@ -17,6 +17,7 @@
   	{ "event": "userReady", "callback": "game#userReady"},
   	{ "event": "questionReady", "callback": "game#questionReady"},
   	{ "event": "questionAnswered", "callback": "game#questionAnswered"},
-  	{ "event": "timerEnd", "callback": "game#timerEnd"}
+  	{ "event": "timerEnd", "callback": "game#timerEnd"},
+  	{ "event": "matchResult", "callback": "game#matchResult"}
   ]
 }
